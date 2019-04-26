@@ -1,18 +1,15 @@
 import datetime
-import logging
 
 import voluptuous as vol
 
 from homeassistant.core import callback
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.const import CONF_NAME, CONF_WEEKDAY, WEEKDAYS
+from homeassistant.const import CONF_NAME
 import homeassistant.util.dt as dt_util
 from homeassistant.helpers.event import async_track_point_in_utc_time
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity import Entity
 
-
-_LOGGER = logging.getLogger(__name__)
 
 CONF_RECYCLING_EPOCH = 'recycling_epoch'
 ATTR_NEXT_BIN_COLLECTION_DATE = 'date'
@@ -30,8 +27,7 @@ DEFAULT_NAME = 'Next Bin Collection'
 DEFAULT_ICON = 'mdi:trash-can-outline'
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_RECYCLING_EPOCH, default=DEFAULT_NAME): cv.date,
-    vol.Required(CONF_WEEKDAY): vol.Any(*WEEKDAYS),
+    vol.Optional(CONF_RECYCLING_EPOCH, default=DEFAULT_NAME): cv.date,
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
 })
 
@@ -39,15 +35,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 async def async_setup_platform(hass, config, async_add_entities,
                                discovery_info=None):
     """Setup the sensor platform."""
-    from dateutil import relativedelta
-
     sensor_name = config.get(CONF_NAME)
-    weekday = config.get(CONF_WEEKDAY)
     recycling_epoch = config.get(CONF_RECYCLING_EPOCH)
 
     sensors = [
-        NextBinCollectionSensor(hass, sensor_name, weekday, recycling_epoch),
-        NextBinCollectionDateSensor(hass, f'{sensor_name} Date', weekday,
+        NextBinCollectionSensor(hass, sensor_name, recycling_epoch),
+        NextBinCollectionDateSensor(hass, f'{sensor_name} Date',
                                     recycling_epoch),
     ]
 
@@ -60,11 +53,10 @@ async def async_setup_platform(hass, config, async_add_entities,
 
 class NextBinCollectionSensor(Entity):
 
-    def __init__(self, hass, name, weekday, recycling_epoch):
+    def __init__(self, hass, name, recycling_epoch):
         """Initialize the sensor."""
         self.hass = hass
         self._name = name
-        self._weekday = weekday
         self._recycling_epoch = recycling_epoch
         self._state = None
         self._next_bin_collection = None
@@ -88,34 +80,21 @@ class NextBinCollectionSensor(Entity):
     @property
     def device_state_attributes(self):
         return {
-            CONF_WEEKDAY: self._weekday,
-            ATTR_NEXT_BIN_COLLECTION_DATE: self._next_bin_collection,
+            ATTR_NEXT_BIN_COLLECTION_DATE: self._next_bin_collection.isoformat()
         }
 
     def _update_internal_state(self, now):
         from dateutil import relativedelta
 
-        RD_WEEKDAYS = {
-            'sun': relativedelta.SU,
-            'mon': relativedelta.MO,
-            'tue': relativedelta.TU,
-            'wed': relativedelta.WE,
-            'thu': relativedelta.TH,
-            'fri': relativedelta.FR,
-            'sat': relativedelta.SA,
-        }
-
-        weekday = RD_WEEKDAYS.get(self._weekday)
-
         today = dt_util.as_local(now).date()
-        next_bin_collection = \
-            today + relativedelta.relativedelta(weekday=weekday)
-
-        self._state =  WASTE_AND_RECYCLING if \
-            ((next_bin_collection - self._recycling_epoch).days / 7) % 2 == 0 \
-            else WASTE_ONLY
+        bin_day = relativedelta.weekdays[self._recycling_epoch.weekday()]
         self._next_bin_collection = \
-            next_bin_collection.strftime(DATE_STR_FORMAT)
+            today + relativedelta.relativedelta(weekday=bin_day)
+
+        # If next date is a factor of 2 weeks away from epoch, it is recycling
+        self._state =  WASTE_AND_RECYCLING if \
+            ((self._next_bin_collection - self._recycling_epoch).days / 7) % 2 == 0 \
+            else WASTE_ONLY
 
     def get_next_interval(self, now=None):
         """Compute next time update should occur (eg first thing tomorrow)."""
@@ -138,4 +117,4 @@ class NextBinCollectionDateSensor(NextBinCollectionSensor):
 
     def _update_internal_state(self, now):
         super()._update_internal_state(now)
-        self._state = self._next_bin_collection
+        self._state = self._next_bin_collection.strftime(DATE_STR_FORMAT)
