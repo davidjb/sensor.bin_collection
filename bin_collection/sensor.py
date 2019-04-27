@@ -125,19 +125,23 @@ class NextBinCollectionSensor(BaseNextBinCollectionSensor):
     def _update_internal_state(self, now):
         super()._update_internal_state(now)
 
-        today = dt_util.as_local(now).date()
         type_readable = BIN_COLLECTION_TYPES[self._type]
 
-        if self._next_date == today:
-            self._state = 'Today ({type_readable})'
+        today = dt_util.as_local(now).date()
+        difference = self._next_date - today
+
+        if (difference.days == 0):
+            humanisation = 'Today'
+        elif (difference.days == 1):
+            humanisation = 'Tomorrow'
         else:
             weekday = self._next_date.strftime('%A')
-            week_difference = \
-                self._next_date.isocalendar()[1] - today.isocalendar()[1]
-            if week_difference == 0:
-                self._state = f'This {weekday} ({type_readable})'
+            if (difference.days < 8):
+                humanisation = f'This {weekday}'
             else:
-                self._state = f'Next {weekday} ({type_readable})'
+                humanisation = f'Next {weekday}'
+
+        self._state = f'{humanisation} ({type_readable})'
 
 
 class NextBinCollectionDateSensor(BaseNextBinCollectionSensor):
