@@ -12,8 +12,6 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.util import slugify
 
 
-REQUIREMENTS = ['python-dateutil']
-
 DOMAIN = 'sensor'
 
 CONF_RECYCLING_EPOCH = 'recycling_epoch'
