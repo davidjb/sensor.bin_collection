@@ -1,9 +1,9 @@
 {
   "domain": "bin_collection",
+  "version" "1.0.0",
   "name": "Bin Collection",
   "documentation": "https://github.com/davidjb/sensor.bin_collection",
   "dependencies": [],
   "codeowners": ["davidjb"],
   "requirements": ["python-dateutil"]
 }
-
