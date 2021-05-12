@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "name": "Bin Collection",
   "documentation": "https://github.com/davidjb/sensor.bin_collection",
+  "issue_tracker": "https://github.com/davidjb/sensor.bin_collection/issues",
   "dependencies": [],
   "codeowners": ["davidjb"],
   "requirements": ["python-dateutil"]
